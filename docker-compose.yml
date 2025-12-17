@@ -1,0 +1,14 @@
+services:
+  ort-rknpu-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.rk3588
+      # Ensure we build an arm64 image even on multi-arch hosts
+      platforms:
+        - linux/arm64/v8
+    container_name: ort-rknpu-build
+    # Map ./out on host to /out in container so wheels/libs are accessible
+    volumes:
+      - ./out:/out
+    # Default command: just sleep so container stays alive after build
+    command: ["/bin/bash", "-c", "sleep infinity"]
