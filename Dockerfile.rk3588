@@ -18,11 +18,9 @@ COPY install_onnxruntime_rknpu_arm.sh .
 RUN chmod +x install_onnxruntime_rknpu_arm.sh
 
 # Clone sources during build (separate layers for better caching)
-RUN --mount=type=cache,target=/root/.gitconfig \
-    git clone --depth 1 https://github.com/rockchip-linux/rknn-toolkit2.git
+RUN git clone --depth 1 https://github.com/rockchip-linux/rknn-toolkit2.git
 
-RUN --mount=type=cache,target=/root/.gitconfig \
-    git clone --depth 1 --recursive --shallow-submodules \
+RUN git clone --depth 1 --recursive --shallow-submodules \
     https://github.com/microsoft/onnxruntime.git
 
 # Run the ARM-aware build (cpuinfo=OFF, --arm, RKNPU EP)
