@@ -1,13 +1,48 @@
 services:
+  # Original build (downloads sources each time)
   ort-rknpu-build:
     build:
       context: .
       dockerfile: Dockerfile.rk3588
-      # Ensure we build an arm64 image even on multi-arch hosts
       platforms:
         - linux/arm64/v8
     container_name: ort-rknpu-build
-    # Map ./out on host to /out in container so wheels/libs are accessible
+    volumes:
+      - ./out:/out
+
+  # Optimized build using local sources (much faster)
+  ort-rknpu-local:
+    build:
+      context: .
+      dockerfile: Dockerfile.rk3588.local
+      platforms:
+        - linux/arm64/v8
+    container_name: ort-rknpu-local
+    volumes:
+      - ./out:/out
+      - ccache:/ccache
+
+  # Ultra-optimized: volume-mount builder (zero build context)
+  ort-rknpu-volume:
+    build:
+      context: .
+      dockerfile: Dockerfile.rk3588.build
+      target: builder
+      platforms:
+        - linux/arm64/v8
+    container_name: ort-rknpu-volume
+    volumes:
+      # Mount sources read-only from host
+      - ./sources/rknn-toolkit2:/workspace/rknn-toolkit2:ro
+      - ./sources/onnxruntime:/workspace/onnxruntime:ro
+      # Build output
+      - ./out:/workspace/onnxruntime/build_rknpu
+      # Persistent ccache
+      - ccache:/ccache
+
+volumes:
+  ccache:
+    driver: local
     volumes:
       - ./out:/out
     # Default command: just sleep so container stays alive after build

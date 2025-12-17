@@ -1,0 +1,13 @@
+# Exclude large directories from Docker build context
+sources/
+out/
+wheels/
+*.whl
+build_rknpu/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/

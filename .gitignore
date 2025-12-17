@@ -1,0 +1,6 @@
+# ONNX Runtime RKNPU Build Optimization
+
+sources/
+out/
+wheels/
+*.whl

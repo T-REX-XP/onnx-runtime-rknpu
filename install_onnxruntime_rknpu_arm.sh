@@ -71,7 +71,7 @@ fi
 # onnxruntime cloned in Dockerfile to /workspace/onnxruntime
 cd /workspace/onnxruntime
 
-CM_EXTRA_DEFINES="RKNPU_DDK_PATH=$RKNPU_DDK_PATH onnxruntime_ENABLE_CPUINFO=OFF"
+CM_EXTRA_DEFINES="RKNPU_DDK_PATH=$RKNPU_DDK_PATH onnxruntime_ENABLE_CPUINFO=OFF CMAKE_CXX_FLAGS=-Wno-psabi"
 
 BUILD_CMD=(./build.sh
   --allow_running_as_root
@@ -90,3 +90,9 @@ if [ "$BUILD_WHEEL" = "1" ]; then
 fi
 
 "${BUILD_CMD[@]}"
+
+# Copy outputs to OUTPUT_DIR if set
+if [ -n "$OUTPUT_DIR" ] && [ -d "$BUILD_DIR/Linux/$BUILD_TYPE/dist" ]; then
+  echo "Copying wheels to $OUTPUT_DIR"
+  cp -v "$BUILD_DIR/Linux/$BUILD_TYPE/dist"/*.whl "$OUTPUT_DIR/" || true
+fi
