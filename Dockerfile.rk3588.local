@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /workspace
 
 # Copy sources from host (cached if sources don't change)
-COPY sources/rknn-toolkit2 ./rknn-toolkit2
+COPY sources/rknpu_ddk ./rknpu_ddk
 COPY sources/onnxruntime ./onnxruntime
 
 # Copy build script AFTER sources (so script changes don't invalidate source layers)
@@ -41,7 +41,7 @@ WORKDIR /out
 
 # Copy built artifacts
 COPY --from=builder /workspace/onnxruntime/build_rknpu/Linux/MinSizeRel/dist/*.whl ./
-COPY --from=builder /workspace/rknn-toolkit2/rknpu2/runtime/RK3588/Linux/librknn_api/aarch64/*.so /usr/lib/
+COPY --from=builder /usr/lib/librknpu_ddk.so /usr/lib/
 
 # Verify wheel
 RUN pip3 install --no-deps onnxruntime-*.whl && \

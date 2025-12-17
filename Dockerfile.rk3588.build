@@ -15,7 +15,7 @@ COPY install_onnxruntime_rknpu_arm.sh .
 RUN chmod +x install_onnxruntime_rknpu_arm.sh
 
 # Create mount points for sources and output
-RUN mkdir -p /workspace/rknn-toolkit2 /workspace/onnxruntime /workspace/output
+RUN mkdir -p /workspace/rknpu_ddk /workspace/onnxruntime /workspace/output
 
 # Setup ccache
 ENV CCACHE_DIR=/ccache

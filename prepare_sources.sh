@@ -8,15 +8,15 @@ echo "==> Preparing source repositories in $SOURCES_DIR"
 mkdir -p "$SOURCES_DIR"
 cd "$SOURCES_DIR"
 
-# Clone or update rknn-toolkit2
-if [ -d "rknn-toolkit2/.git" ]; then
-    echo "==> Updating rknn-toolkit2..."
-    cd rknn-toolkit2
+# Clone or update rknpu_ddk (required by official RKNPU EP docs)
+if [ -d "rknpu_ddk/.git" ]; then
+    echo "==> Updating rknpu_ddk..."
+    cd rknpu_ddk
     git pull
     cd ..
 else
-    echo "==> Cloning rknn-toolkit2..."
-    git clone --depth 1 https://github.com/rockchip-linux/rknn-toolkit2.git
+    echo "==> Cloning rknpu_ddk..."
+    git clone --depth 1 https://github.com/airockchip/rknpu_ddk.git
 fi
 
 # Clone or update onnxruntime

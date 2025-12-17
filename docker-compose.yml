@@ -33,17 +33,16 @@ services:
     container_name: ort-rknpu-volume
     volumes:
       # Mount sources read-only from host
-      - ./sources/rknn-toolkit2:/workspace/rknn-toolkit2:ro
-      - ./sources/onnxruntime:/workspace/onnxruntime:ro
-      # Build output
-      - ./out:/workspace/onnxruntime/build_rknpu
+      - ./sources/rknpu_ddk:/workspace/rknpu_ddk:ro
+      - ./sources/onnxruntime:/workspace/onnxruntime
+      # Build output (mounted to /out, used via OUTPUT_DIR)
+      - ./out:/out
       # Persistent ccache
       - ccache:/ccache
+    environment:
+      OUTPUT_DIR: /out
+      CCACHE_DIR: /ccache
 
 volumes:
   ccache:
     driver: local
-    volumes:
-      - ./out:/out
-    # Default command: just sleep so container stays alive after build
-    command: ["/bin/bash", "-c", "sleep infinity"]

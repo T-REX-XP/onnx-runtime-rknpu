@@ -16,7 +16,7 @@ COPY install_onnxruntime_rknpu_arm.sh .
 RUN chmod +x install_onnxruntime_rknpu_arm.sh
 
 # Clone sources during build (separate layers for better caching)
-RUN git clone --depth 1 https://github.com/rockchip-linux/rknn-toolkit2.git
+RUN git clone --depth 1 https://github.com/airockchip/rknpu_ddk.git
 
 RUN git clone --depth 1 --recursive --shallow-submodules \
     https://github.com/microsoft/onnxruntime.git
@@ -40,7 +40,7 @@ WORKDIR /out
 
 # Copy built wheel(s) from builder
 COPY --from=builder /workspace/onnxruntime/build_rknpu/Linux/MinSizeRel/dist/*.whl ./
-COPY --from=builder /workspace/rknn-toolkit2/rknpu2/runtime/RK3588/Linux/librknn_api/aarch64/*.so /usr/lib/
+COPY --from=builder /usr/lib/librknpu_ddk.so /usr/lib/
 
 # Verify wheel and pre-install (optional)
 RUN pip3 install --no-deps onnxruntime-*.whl && \

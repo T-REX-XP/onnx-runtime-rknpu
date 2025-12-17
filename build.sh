@@ -45,11 +45,12 @@ case "${1:-help}" in
         
         # Run build with sources mounted from host
         docker run --rm \
-            -v "$PWD/sources/rknn-toolkit2:/workspace/rknn-toolkit2:ro" \
+            -v "$PWD/sources/rknpu_ddk:/workspace/rknpu_ddk:ro" \
             -v "$PWD/sources/onnxruntime:/workspace/onnxruntime" \
-            -v "$PWD/out:/workspace/output" \
+            -v "$PWD/out:/out" \
             -v onnx-ccache:/ccache \
-            -e OUTPUT_DIR=/workspace/output \
+            -e OUTPUT_DIR=/out \
+            -e CCACHE_DIR=/ccache \
             --name onnx-build \
             onnxruntime-builder:arm64
         
@@ -73,7 +74,7 @@ case "${1:-help}" in
     compose)
         echo "==> Building with docker-compose..."
         ./prepare_sources.sh
-        docker-compose build onnxruntime-rknpu-local
+        docker-compose build ort-rknpu-local
         ;;
     
     extract)

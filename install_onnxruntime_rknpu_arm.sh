@@ -2,7 +2,7 @@
 set -e
 
 SRC_ROOT=/workspace/src
-RKNN_REPO=https://github.com/rockchip-linux/rknn-toolkit2.git
+RKNPU_REPO=https://github.com/airockchip/rknpu_ddk.git
 ORT_REPO=https://github.com/microsoft/onnxruntime.git
 BUILD_TYPE=${BUILD_TYPE:-MinSizeRel}
 BUILD_DIR=${BUILD_DIR:-build_rknpu}
@@ -11,47 +11,45 @@ BUILD_WHEEL=${BUILD_WHEEL:-1}
 mkdir -p "$SRC_ROOT"
 cd /workspace
 
-# rknn-toolkit2 cloned in Dockerfile to /workspace/rknn-toolkit2
-cd /workspace/rknn-toolkit2
+# migrated to rknpu_ddk
 
-RUNTIME_BASE=""
-if [ -d rknpu2/runtime/RK3588/Linux/librknn_api ]; then
-  RUNTIME_BASE="rknpu2/runtime/RK3588/Linux"
-elif [ -d rknpu2/runtime/Linux/librknn_api ]; then
-  RUNTIME_BASE="rknpu2/runtime/Linux"
-fi
+### rknpu_ddk is required by official RKNPU EP docs
+cd /workspace/rknpu_ddk || { echo "ERROR: /workspace/rknpu_ddk not found"; exit 1; }
 
-if [ -z "$RUNTIME_BASE" ]; then
-  echo "ERROR: Could not find RK3588 runtime in rknn-toolkit2."
+# Locate librknpu_ddk.so and headers
+LIB_SO=$(find . -type f -name "librknpu_ddk.so" | head -n1)
+HDR_DIR=$(dirname "$(find . -type f -name "rknpu_pub.h" | head -n1)")
+
+if [ -z "$LIB_SO" ]; then
+  echo "ERROR: librknpu_ddk.so not found in rknpu_ddk"
   exit 1
 fi
 
-LIB_DIR=${RUNTIME_BASE}/librknn_api/aarch64
-HDR_DIR=${RUNTIME_BASE}/librknn_api/include
+cp "$LIB_SO" /usr/lib/
 
-if [ ! -f "$LIB_DIR/librknnrt.so" ] && [ ! -f "$LIB_DIR/librknpu_ddk.so" ]; then
-  echo "ERROR: No RKNN runtime .so in $LIB_DIR"
-  exit 1
-fi
-
-if [ -f "$LIB_DIR/librknnrt.so" ]; then
-  cp "$LIB_DIR/librknnrt.so" /usr/lib/
+if [ -n "$HDR_DIR" ]; then
+  mkdir -p /usr/include/rknpu
+  cp "$HDR_DIR"/*.h /usr/include/rknpu/
 else
-  cp "$LIB_DIR/librknpu_ddk.so" /usr/lib/
-fi
-
-mkdir -p /usr/include/rknn
-if [ -d "$HDR_DIR" ]; then
-  cp "$HDR_DIR"/* /usr/include/rknn/
+  echo "WARN: rknpu_pub.h not found; ensure correct rknpu_ddk version"
 fi
 ldconfig
 
-export RKNPU_DDK_PATH="/workspace/rknn-toolkit2/rknpu2"
+export RKNPU_DDK_PATH="/workspace/rknpu_ddk"
+
+# Detect number of CPU cores and set parallel jobs
+NUM_JOBS=${NUM_JOBS:-$(nproc 2>/dev/null || echo 4)}
+# Use most cores, leave one or two free to avoid system freeze
+NUM_JOBS=$((NUM_JOBS > 2 ? NUM_JOBS - 1 : NUM_JOBS))
+export NUM_JOBS
+
+echo "Building with $NUM_JOBS parallel jobs"
 
 # Enable ccache if available
 if command -v ccache >/dev/null 2>&1; then
   export CMAKE_C_COMPILER_LAUNCHER=ccache
   export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+  ccache -z  # clear stats
   ccache -s || true
 fi
 
@@ -71,17 +69,29 @@ fi
 # onnxruntime cloned in Dockerfile to /workspace/onnxruntime
 cd /workspace/onnxruntime
 
-CM_EXTRA_DEFINES="RKNPU_DDK_PATH=$RKNPU_DDK_PATH onnxruntime_ENABLE_CPUINFO=OFF CMAKE_CXX_FLAGS=-Wno-psabi"
+CM_EXTRA_DEFINES="RKNPU_DDK_PATH=$RKNPU_DDK_PATH;onnxruntime_ENABLE_CPUINFO=OFF"
+
+# Disable treating warnings as errors (RKNPU EP code has ABI warnings)
+CM_EXTRA_DEFINES="$CM_EXTRA_DEFINES;CMAKE_CXX_FLAGS=-Wno-psabi;COMPILE_NO_WARING_AS_ERROR=ON"
+
+# Optional: toolchain and custom protoc if provided
+if [ -n "$CMAKE_TOOLCHAIN_FILE" ]; then
+  CM_EXTRA_DEFINES="$CM_EXTRA_DEFINES;CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+fi
+if [ -n "$ONNX_CUSTOM_PROTOC_EXECUTABLE" ]; then
+  CM_EXTRA_DEFINES="$CM_EXTRA_DEFINES;ONNX_CUSTOM_PROTOC_EXECUTABLE=$ONNX_CUSTOM_PROTOC_EXECUTABLE"
+fi
 
 BUILD_CMD=(./build.sh
   --allow_running_as_root
   --use_rknpu
-  --parallel
+  --parallel "$NUM_JOBS"
   --build_shared_lib
   --build_dir "$BUILD_DIR"
   --config "$BUILD_TYPE"
   --skip_submodule_sync
   --skip_tests
+  --compile_no_warning_as_error
   --cmake_extra_defines "$CM_EXTRA_DEFINES"
 )
 
@@ -91,8 +101,16 @@ fi
 
 "${BUILD_CMD[@]}"
 
+# Show ccache stats after build
+if command -v ccache >/dev/null 2>&1; then
+  echo "=== ccache stats after build ==="
+  ccache -s || true
+fi
+
 # Copy outputs to OUTPUT_DIR if set
 if [ -n "$OUTPUT_DIR" ] && [ -d "$BUILD_DIR/Linux/$BUILD_TYPE/dist" ]; then
   echo "Copying wheels to $OUTPUT_DIR"
   cp -v "$BUILD_DIR/Linux/$BUILD_TYPE/dist"/*.whl "$OUTPUT_DIR/" || true
 fi
+
+echo "=== Build complete ==="
